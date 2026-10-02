@@ -5,20 +5,25 @@ import { approach, moveBody, type Body } from './physics';
 import { drawKancil } from './modern/characters';
 import { HERO } from './sprites';
 
-// Tuned in px and seconds; one tile is 16 px.
-const RUN_SPEED = 96;
-const GROUND_ACCEL = 900;
-const GROUND_DECEL = 1100;
-const AIR_ACCEL = 640;
-const GRAVITY = 900;
-const FALL_GRAVITY_MULT = 1.55;
-const JUMP_VELOCITY = 300;
-const JUMP_CUT = 0.45;
-const MAX_FALL = 380;
-const COYOTE_TIME = 0.1;
-const JUMP_BUFFER = 0.12;
-const STOMP_BOUNCE = 210;
-const STOMP_BOUNCE_HELD = 300;
+/**
+ * Movement tuning in px and seconds; one tile is 16 px. Kept in one mutable object so the
+ * level reachability check can try a weakened kancil and prove the levels have slack.
+ */
+export const MOVE = {
+  runSpeed: 100,
+  groundAccel: 900,
+  groundDecel: 1100,
+  airAccel: 640,
+  gravity: 900,
+  fallGravityMult: 1.55,
+  jumpVelocity: 320,
+  jumpCut: 0.45,
+  maxFall: 380,
+  coyoteTime: 0.1,
+  jumpBuffer: 0.12,
+  stompBounce: 210,
+  stompBounceHeld: 300,
+};
 
 export interface PlayerEvents {
   jumped: boolean;
@@ -67,23 +72,23 @@ export class Player implements Body {
     this.squash = approach(this.squash, 0, dt * 4);
 
     if (this.dead) {
-      this.vy = Math.min(this.vy + GRAVITY * dt, MAX_FALL);
+      this.vy = Math.min(this.vy + MOVE.gravity * dt, MOVE.maxFall);
       this.y += this.vy * dt;
       return ev;
     }
 
     const dir = this.autoRun ? 1 : (input.down('right') ? 1 : 0) - (input.down('left') ? 1 : 0);
     if (dir !== 0) this.facing = dir as 1 | -1;
-    const accel = this.onGround ? (dir !== 0 ? GROUND_ACCEL : GROUND_DECEL) : AIR_ACCEL;
-    this.vx = approach(this.vx, dir * (this.autoRun ? RUN_SPEED * 0.6 : RUN_SPEED), accel * dt);
+    const accel = this.onGround ? (dir !== 0 ? MOVE.groundAccel : MOVE.groundDecel) : MOVE.airAccel;
+    this.vx = approach(this.vx, dir * (this.autoRun ? MOVE.runSpeed * 0.6 : MOVE.runSpeed), accel * dt);
 
     // Coyote time lets a jump still register just after running off a ledge;
     // the jump buffer remembers a press made just before landing.
-    this.coyote = this.onGround ? COYOTE_TIME : this.coyote - dt;
+    this.coyote = this.onGround ? MOVE.coyoteTime : this.coyote - dt;
     const jumpPressed = !this.autoRun && input.pressed('jump');
-    this.jumpBuffer = jumpPressed ? JUMP_BUFFER : this.jumpBuffer - dt;
+    this.jumpBuffer = jumpPressed ? MOVE.jumpBuffer : this.jumpBuffer - dt;
     if (this.jumpBuffer > 0 && this.coyote > 0) {
-      this.vy = -JUMP_VELOCITY;
+      this.vy = -MOVE.jumpVelocity;
       this.jumpBuffer = 0;
       this.coyote = 0;
       this.onGround = false;
@@ -93,12 +98,12 @@ export class Player implements Body {
     }
     // Releasing jump early gives a shorter hop.
     if (this.jumpCuttable && !input.down('jump') && this.vy < 0) {
-      this.vy *= JUMP_CUT;
+      this.vy *= MOVE.jumpCut;
       this.jumpCuttable = false;
     }
 
-    const g = this.vy > 0 ? GRAVITY * FALL_GRAVITY_MULT : GRAVITY;
-    this.vy = Math.min(this.vy + g * dt, MAX_FALL);
+    const g = this.vy > 0 ? MOVE.gravity * MOVE.fallGravityMult : MOVE.gravity;
+    this.vy = Math.min(this.vy + g * dt, MOVE.maxFall);
     const fallSpeed = this.vy;
     const wasGround = this.onGround;
     const contacts = moveBody(this, level, dt);
@@ -122,7 +127,7 @@ export class Player implements Body {
 
   /** Called after landing on an enemy; holding jump bounces higher. */
   bounce(jumpHeld: boolean): void {
-    this.vy = -(jumpHeld ? STOMP_BOUNCE_HELD : STOMP_BOUNCE);
+    this.vy = -(jumpHeld ? MOVE.stompBounceHeld : MOVE.stompBounce);
     this.jumpCuttable = jumpHeld;
     this.onGround = false;
     this.squash = -0.2;

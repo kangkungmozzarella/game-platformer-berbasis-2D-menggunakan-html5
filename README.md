@@ -82,4 +82,6 @@ Level ditulis sebagai peta ASCII di [`src/game/levels.ts`](src/game/levels.ts). 
 | `.` | kosong | `G` | gapura (finis) |
 | `b` | buaya diam (pijakan, menyelam kalau diinjak terlalu lama) | `v` | buaya berenang |
 
-Patokan jarak lompat: naik maksimal 3 tile, celah datar maksimal 3 tile.
+Patokan jarak: naik maksimal 3 tile, celah datar maksimal 3 tile, dan deretan bambu runcing maksimal 2 tile.
+
+Setelah mengubah atau menambah level, jalankan `npm run check:levels`. Perintah ini memakai fisika game yang asli untuk memastikan finis dan semua item bisa dijangkau, juga oleh kancil yang dilemahkan 10% supaya tidak ada lompatan yang butuh timing sempurna. Butuh Google Chrome terpasang.
