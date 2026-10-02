@@ -1,4 +1,6 @@
 :root {
+  /* Updated from main.ts to match the screen; 16:9 until then. */
+  --view-aspect: 1.7778;
   --ink: #1b1210;
   --wood: #3a2418;
   --wood-light: #5a3a26;
@@ -33,11 +35,11 @@ body {
   place-items: center;
 }
 
-/* 16:9 stage that fills the window; overlays use container units so they scale with it. */
+/* Stage that fills the window (between 16:9 and ~22:9); overlays use container units so they scale with it. */
 #stage {
   position: relative;
-  width: min(100vw, 100dvh * 16 / 9);
-  height: min(100dvh, 100vw * 9 / 16);
+  width: min(100vw, 100dvh * var(--view-aspect));
+  height: min(100dvh, 100vw / var(--view-aspect));
   container-type: size;
   overflow: hidden;
 }
@@ -54,6 +56,11 @@ body {
   display: none !important;
 }
 
+/* Vibration only means something on touch devices. */
+body:not(.is-touch) .touch-only {
+  display: none;
+}
+
 /* ------------------------------------------------------------ HUD */
 
 #hud {
@@ -62,7 +69,8 @@ body {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  padding: 1.6cqh 2cqw;
+  /* Keep clear of a camera notch or punch-hole on edge-to-edge phones. */
+  padding: 1.6cqh max(2cqw, env(safe-area-inset-right)) 1.6cqh max(2cqw, env(safe-area-inset-left));
   pointer-events: none;
   font-size: 3.6cqh;
   text-shadow: 0.25cqh 0.25cqh 0 var(--ink);
@@ -163,51 +171,106 @@ body {
 /* ------------------------------------------------------------ touch controls */
 
 #touch {
-  position: absolute;
+  --btn: clamp(64px, 19vmin, 96px);
+  --px: calc(var(--btn) / 16);
+  position: fixed;
   inset: auto 0 0 0;
-  height: 30cqh;
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
-  padding: 0 3cqw 4cqh;
+  padding:
+    0 max(16px, env(safe-area-inset-right))
+    max(14px, env(safe-area-inset-bottom))
+    max(16px, env(safe-area-inset-left));
   pointer-events: none;
-}
-
-#pad,
-#btn-jump {
-  pointer-events: auto;
-  touch-action: none;
-  background: rgb(27 18 16 / 0.35);
-  border: 0.4cqh solid rgb(251 241 220 / 0.45);
-  color: rgb(251 241 220 / 0.85);
-  font-size: 6cqh;
 }
 
 #pad {
   display: flex;
-  width: 42cqh;
-  height: 20cqh;
-  border-radius: 10cqh;
-  overflow: hidden;
-}
-
-#pad span {
-  flex: 1;
-  display: grid;
-  place-items: center;
-}
-
-#pad span.on,
-#btn-jump.on {
-  background: rgb(240 184 74 / 0.45);
+  /* The gap stays inside the pad so a thumb can slide between arrows. */
+  gap: calc(var(--px) * 3);
+  pointer-events: auto;
+  touch-action: none;
 }
 
 #btn-jump {
-  width: 22cqh;
-  height: 22cqh;
-  border-radius: 50%;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+/* Chunky pixel-art button: a gold frame with stepped corners around a wooden face. */
+.tbtn {
+  --size: var(--btn);
+  position: relative;
   display: grid;
   place-items: center;
+  width: var(--size);
+  height: var(--size);
+  color: var(--gold-light);
+  background: var(--gold);
+  opacity: 0.72;
+  transition: opacity 0.1s;
+}
+
+.tbtn,
+.tbtn::before {
+  --s: var(--px);
+  clip-path: polygon(
+    calc(var(--s) * 2) 0, calc(100% - var(--s) * 2) 0,
+    calc(100% - var(--s) * 2) var(--s), calc(100% - var(--s)) var(--s),
+    calc(100% - var(--s)) calc(var(--s) * 2), 100% calc(var(--s) * 2),
+    100% calc(100% - var(--s) * 2), calc(100% - var(--s)) calc(100% - var(--s) * 2),
+    calc(100% - var(--s)) calc(100% - var(--s)), calc(100% - var(--s) * 2) calc(100% - var(--s)),
+    calc(100% - var(--s) * 2) 100%, calc(var(--s) * 2) 100%,
+    calc(var(--s) * 2) calc(100% - var(--s)), var(--s) calc(100% - var(--s)),
+    var(--s) calc(100% - var(--s) * 2), 0 calc(100% - var(--s) * 2),
+    0 calc(var(--s) * 2), var(--s) calc(var(--s) * 2),
+    var(--s) var(--s), calc(var(--s) * 2) var(--s)
+  );
+}
+
+.tbtn::before {
+  content: '';
+  position: absolute;
+  inset: var(--px);
+  background: var(--wood);
+  /* Darker lip along the bottom gives the face some depth. */
+  box-shadow: inset 0 calc(var(--px) * -3) 0 rgb(0 0 0 / 0.3);
+}
+
+.tbtn-big {
+  --size: calc(var(--btn) * 1.3);
+}
+
+.tbtn svg {
+  position: relative;
+  height: 40%;
+  fill: currentColor;
+  shape-rendering: crispEdges;
+  filter: drop-shadow(var(--px) var(--px) 0 var(--ink));
+  translate: 0 calc(var(--px) * -1);
+}
+
+.tbtn-big svg {
+  height: auto;
+  width: 42%;
+}
+
+/* Pressed: the face lights up and the icon sinks into it. */
+.tbtn.on {
+  opacity: 1;
+  color: var(--wood);
+  background: var(--gold-light);
+}
+
+.tbtn.on::before {
+  background: var(--gold);
+  box-shadow: inset 0 calc(var(--px) * 2) 0 rgb(0 0 0 / 0.18);
+}
+
+.tbtn.on svg {
+  translate: 0 var(--px);
+  filter: none;
 }
 
 /* ------------------------------------------------------------ screens */
@@ -390,7 +453,8 @@ kbd {
   flex-direction: column;
   align-items: center;
   gap: 0.8cqh;
-  width: 38cqh;
+  width: 32cqh;
+  min-width: 0;
   padding: 2cqh;
   font: inherit;
   font-size: 3.2cqh;
@@ -487,4 +551,277 @@ kbd {
   .record {
     animation: none;
   }
+}
+
+/* ============================================================ modern "cozy" style
+   Everything above is the pixel-art look; these rules restyle it when body.art-modern is set. */
+
+body.art-modern {
+  --font: 'Fredoka', ui-rounded, system-ui, sans-serif;
+  --m-ink: #5a3a26;
+  --m-soft: #b0703a;
+  --m-cream: #fff8ec;
+  --m-orange: #f39a3e;
+  --m-orange-dark: #d0742a;
+  background: #2a1d16;
+}
+
+.art-modern #game {
+  image-rendering: auto;
+}
+
+.icon-modern {
+  display: none;
+}
+
+.art-modern .icon-pixel {
+  display: none;
+}
+
+.art-modern .icon-modern {
+  display: block;
+}
+
+/* HUD */
+.art-modern #hud {
+  font-weight: 600;
+  text-shadow: none;
+}
+
+.art-modern .hud-chip {
+  color: var(--m-ink);
+  background: rgb(255 248 236 / 0.88);
+  border-radius: 99px;
+  padding: 0.6cqh 1.8cqw;
+  box-shadow: 0 0.6cqh 1.8cqh rgb(60 30 10 / 0.2);
+}
+
+.art-modern .hud-chip.score span {
+  color: var(--m-soft);
+}
+
+.art-modern .hearts img,
+.art-modern .hud-chip img {
+  image-rendering: auto;
+}
+
+.art-modern .hearts img {
+  height: 4.8cqh;
+  filter: drop-shadow(0 0.4cqh 0.6cqh rgb(60 20 10 / 0.3));
+}
+
+.art-modern .hud-center {
+  color: #fff;
+  font-weight: 600;
+  text-shadow: 0 0.3cqh 1cqh rgb(60 30 10 / 0.5);
+}
+
+.art-modern .icon-btn {
+  color: var(--m-ink);
+  background: rgb(255 248 236 / 0.88);
+  border: none;
+  border-radius: 50%;
+  box-shadow: 0 0.6cqh 1.8cqh rgb(60 30 10 / 0.2);
+}
+
+.art-modern #banner {
+  text-shadow: 0 0.4cqh 1.6cqh rgb(60 30 10 / 0.5);
+}
+
+.art-modern #banner strong {
+  font-weight: 700;
+}
+
+.art-modern #banner small {
+  color: #ffe6b0;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+}
+
+/* Screens and panels */
+.art-modern .screen.dim {
+  background: rgb(60 35 20 / 0.45);
+  backdrop-filter: blur(3px);
+}
+
+.art-modern .eyebrow {
+  color: #fff;
+  font-weight: 600;
+  letter-spacing: 0.3em;
+  text-shadow: 0 0.3cqh 1cqh rgb(80 40 10 / 0.5);
+}
+
+.art-modern h1 {
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.02em;
+  text-shadow:
+    0 0.9cqh 0 #e2803a,
+    0 1.5cqh 0 #a85a26,
+    0 2.6cqh 3cqh rgb(60 30 10 / 0.45);
+}
+
+.art-modern .screen button {
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(#ffb75e, var(--m-orange));
+  border-radius: 99px;
+  box-shadow:
+    0 0.8cqh 0 var(--m-orange-dark),
+    0 1.6cqh 2.4cqh rgb(80 40 10 / 0.25);
+  text-shadow: 0 0.25cqh 0 rgb(150 70 20 / 0.45);
+}
+
+.art-modern .screen button:hover {
+  background: linear-gradient(#ffc477, #f7a752);
+}
+
+.art-modern .screen button.ghost {
+  color: var(--m-ink);
+  background: rgb(90 58 38 / 0.08);
+  box-shadow: inset 0 0 0 0.35cqh rgb(90 58 38 / 0.25);
+  text-shadow: none;
+}
+
+.art-modern .screen button.ghost:hover {
+  background: rgb(90 58 38 / 0.14);
+}
+
+.art-modern .screen button.danger {
+  color: #c4423a;
+  box-shadow: inset 0 0 0 0.35cqh rgb(196 66 58 / 0.35);
+}
+
+.art-modern .screen button:focus-visible,
+.art-modern .level-card:focus-visible,
+.art-modern .toggle:focus-within {
+  outline-color: var(--m-orange);
+}
+
+.art-modern .panel {
+  color: var(--m-ink);
+  background: var(--m-cream);
+  border: none;
+  border-radius: 4cqh;
+  box-shadow:
+    inset 0 0 0 0.5cqh rgb(255 255 255 / 0.7),
+    0 2cqh 5cqh rgb(50 25 10 / 0.35);
+}
+
+.art-modern .panel h2 {
+  color: #e07a3a;
+  font-weight: 700;
+  text-shadow: none;
+}
+
+.art-modern .help-list li::before {
+  content: '•  ';
+  color: var(--m-orange);
+}
+
+.art-modern kbd {
+  color: var(--m-ink);
+  font-weight: 600;
+  background: #fff;
+  border-radius: 0.8cqh;
+  box-shadow:
+    inset 0 -0.4cqh 0 rgb(90 58 38 / 0.2),
+    0 0 0 0.25cqh rgb(90 58 38 / 0.2);
+}
+
+.art-modern .screen .level-card {
+  color: var(--m-ink);
+  background: #fff;
+  border: none;
+  border-radius: 2.4cqh;
+  box-shadow:
+    0 0.8cqh 0 #f0dcc2,
+    0 1.6cqh 3cqh rgb(80 40 10 / 0.15);
+  text-shadow: none;
+}
+
+.art-modern .screen .level-card:hover:not(:disabled) {
+  background: #fff3e2;
+}
+
+.art-modern .screen .level-card:disabled {
+  background: #f3eadf;
+}
+
+.art-modern .level-card .num {
+  color: var(--m-orange);
+  font-weight: 700;
+}
+
+.art-modern .level-card .name {
+  font-weight: 600;
+}
+
+.art-modern .level-card .meta,
+.art-modern .stats dt {
+  color: var(--m-soft);
+}
+
+.art-modern .toggle input {
+  accent-color: var(--m-orange);
+}
+
+.art-modern .record {
+  color: #e07a3a;
+  font-weight: 700;
+}
+
+.art-modern #rotate-hint {
+  color: var(--m-ink);
+  background: var(--m-cream);
+  border-top: none;
+  box-shadow: 0 -4px 16px rgb(50 25 10 / 0.25);
+}
+
+/* Touch buttons: soft frosted circles with rounded chevrons. */
+.art-modern .tbtn,
+.art-modern .tbtn::before {
+  clip-path: none;
+}
+
+.art-modern .tbtn::before {
+  display: none;
+}
+
+.art-modern .tbtn {
+  color: #fff;
+  background: rgb(255 255 255 / 0.3);
+  border-radius: 50%;
+  box-shadow:
+    inset 0 0 0 0.35vmin rgb(255 255 255 / 0.75),
+    0 1vmin 2.5vmin rgb(40 20 10 / 0.25);
+  backdrop-filter: blur(6px);
+  opacity: 0.9;
+  transition: transform 0.08s, background 0.08s;
+}
+
+.art-modern #pad {
+  gap: 2.4vmin;
+}
+
+.art-modern .tbtn svg.icon-modern {
+  width: 44%;
+  height: 44%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 3.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  shape-rendering: auto;
+  filter: drop-shadow(0 0.3vmin 0.5vmin rgb(40 20 10 / 0.45));
+  translate: none;
+}
+
+.art-modern .tbtn.on {
+  background: rgb(255 176 86 / 0.88);
+  transform: scale(0.93);
+}
+
+.art-modern .tbtn.on svg {
+  translate: none;
 }

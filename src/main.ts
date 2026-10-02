@@ -1,13 +1,21 @@
 import '@fontsource/pixelify-sans/400.css';
 import '@fontsource/pixelify-sans/700.css';
+import '@fontsource/fredoka/500.css';
+import '@fontsource/fredoka/600.css';
+import '@fontsource/fredoka/700.css';
 import './style.css';
 import { App } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import { SoundSystem } from './engine/audio';
+import { Haptic } from './engine/haptics';
 import { Input, type Action } from './engine/input';
 import { startLoop } from './engine/loop';
+import { MODERN } from './game/art';
 import { drawBackground } from './game/background';
-import { START_LIVES, VIEW_H, VIEW_W } from './game/constants';
+import { drawAyam, drawKancil } from './game/modern/characters';
+import { drawAtmosphere, drawBackground as drawModernBackground } from './game/modern/background';
+import { drawHeart, drawTimun } from './game/modern/items';
+import { BASE_VIEW_W, MAX_VIEW_W, setViewWidth, START_LIVES, VIEW_H, VIEW_W } from './game/constants';
 import { LEVELS } from './game/levels';
 import { AYAM_SPR, HEART_EMPTY, HEART_FULL, HERO, TIMUN, toDataUrl } from './game/sprites';
 import { World, type Session, type WorldEvent } from './game/world';
@@ -20,10 +28,32 @@ const $ = <T extends HTMLElement = HTMLElement>(sel: string) => document.querySe
 
 const canvas = $<HTMLCanvasElement>('#game');
 const ctx = canvas.getContext('2d')!;
-ctx.imageSmoothingEnabled = false;
+document.body.classList.add(MODERN ? 'art-modern' : 'art-pixel');
+
+/**
+ * Pixel art renders at the native 384x216 and is scaled up by CSS. The modern style renders
+ * at (close to) screen resolution, keeping game logic in the same 384x216 coordinate space.
+ */
+function fitCanvas(): void {
+  // Show more of the level on wide phones instead of adding black bars at the sides.
+  const aspect = innerWidth / innerHeight;
+  setViewWidth(Math.round(Math.min(MAX_VIEW_W, Math.max(BASE_VIEW_W, VIEW_H * aspect))));
+  document.documentElement.style.setProperty('--view-aspect', String(VIEW_W / VIEW_H));
+  const scale = MODERN ? Math.min(3, Math.max(1, Math.round((canvas.clientWidth * devicePixelRatio) / VIEW_W))) : 1;
+  if (canvas.width !== VIEW_W * scale || canvas.height !== VIEW_H * scale) {
+    canvas.width = VIEW_W * scale;
+    canvas.height = VIEW_H * scale;
+  }
+  ctx.setTransform(scale, 0, 0, scale, 0, 0);
+  ctx.imageSmoothingEnabled = MODERN;
+  ctx.imageSmoothingQuality = 'high';
+}
+fitCanvas();
+addEventListener('resize', fitCanvas);
 
 const input = new Input();
 const sound = new SoundSystem();
+const haptic = new Haptic();
 const save = loadSave();
 sound.musicOn = save.music;
 sound.sfxOn = save.sfx;
@@ -37,9 +67,20 @@ let menuTime = 0;
 const isNative = Capacitor.isNativePlatform();
 let touchEnabled = isNative || matchMedia('(pointer: coarse)').matches;
 
-const HEART_FULL_URL = toDataUrl(HEART_FULL, 4);
-const HEART_EMPTY_URL = toDataUrl(HEART_EMPTY, 4);
-const TIMUN_URL = toDataUrl(TIMUN, 4);
+/** Renders a vector drawing (centred in a 16x16 box) to a crisp image for the DOM HUD. */
+function vectorIcon(draw: (c: CanvasRenderingContext2D) => void): string {
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const g = c.getContext('2d')!;
+  g.scale(4, 4);
+  g.translate(8, 8);
+  draw(g);
+  return c.toDataURL();
+}
+
+const HEART_FULL_URL = MODERN ? vectorIcon((g) => drawHeart(g, 0, 0.5, 15, true)) : toDataUrl(HEART_FULL, 4);
+const HEART_EMPTY_URL = MODERN ? vectorIcon((g) => drawHeart(g, 0, 0.5, 15, false)) : toDataUrl(HEART_EMPTY, 4);
+const TIMUN_URL = MODERN ? vectorIcon((g) => { g.scale(1.05, 1.05); drawTimun(g); }) : toDataUrl(TIMUN, 4);
 
 // ------------------------------------------------------------ screens
 
@@ -67,6 +108,7 @@ function setPlayingUi(on: boolean): void {
 
 function refreshTitle(): void {
   $('#btn-play').textContent = save.unlocked > 1 ? 'Lanjutkan' : 'Mulai';
+  $('#btn-art').textContent = `Gaya grafis: ${MODERN ? 'Modern' : 'Pixel'}`;
 }
 
 function buildLevelList(): void {
@@ -120,7 +162,7 @@ $('#banner').addEventListener('animationend', () => $('#banner').classList.add('
 function startLevel(index: number): void {
   levelIndex = index;
   levelStart = { score: session.score, lives: session.lives };
-  world = new World(LEVELS[index], session, sound, onWorldEvent);
+  world = new World(LEVELS[index], session, sound, haptic, onWorldEvent);
   mode = 'playing';
   show(null);
   setPlayingUi(true);
@@ -147,6 +189,7 @@ function pause(): void {
   if (mode !== 'playing' || !world || world.finished) return;
   mode = 'paused';
   input.reset();
+  $('#touch').classList.add('hidden');
   show('pause', true);
 }
 
@@ -154,6 +197,7 @@ function resume(): void {
   if (mode !== 'paused') return;
   mode = 'playing';
   show(null);
+  setPlayingUi(true);
   input.reset();
   (document.activeElement as HTMLElement | null)?.blur();
 }
@@ -180,6 +224,7 @@ function completeLevel(): void {
     ['Timun', `${st.timun}/${st.timunTotal}`],
     ['Rambutan', st.rambutan],
     ['Musuh diinjak', st.stomps],
+    ...(st.buaya > 0 ? [['Buaya dihitung', st.buaya] as [string, number]] : []),
     ['Skor level', st.levelScore],
     ['Total skor', session.score],
   ]);
@@ -217,6 +262,11 @@ function handleAction(action: string): void {
       break;
     case 'back':
       show('title');
+      break;
+    case 'toggle-art':
+      save.art = MODERN ? 'pixel' : 'modern';
+      writeSave(save);
+      location.reload();
       break;
     case 'reset-progress':
       if (confirm('Hapus semua progres dan rekor?')) {
@@ -278,10 +328,15 @@ $('#btn-pause').addEventListener('click', () => pause());
 
 const musicBoxes = [$<HTMLInputElement>('#opt-music'), $<HTMLInputElement>('#opt-music-pause')];
 const sfxBoxes = [$<HTMLInputElement>('#opt-sfx'), $<HTMLInputElement>('#opt-sfx-pause')];
+const vibrateBoxes = [$<HTMLInputElement>('#opt-vibrate'), $<HTMLInputElement>('#opt-vibrate-pause')];
 
 function syncOptions(): void {
   musicBoxes.forEach((b) => (b.checked = save.music));
   sfxBoxes.forEach((b) => (b.checked = save.sfx));
+  vibrateBoxes.forEach((b) => (b.checked = save.vibrate));
+  // Desktop browsers would only log warnings for vibration calls.
+  haptic.enabled = save.vibrate && touchEnabled;
+  document.body.classList.toggle('is-touch', touchEnabled);
 }
 
 musicBoxes.forEach((box) =>
@@ -290,6 +345,14 @@ musicBoxes.forEach((box) =>
     sound.setMusic(save.music);
     writeSave(save);
     syncOptions();
+  }),
+);
+vibrateBoxes.forEach((box) =>
+  box.addEventListener('change', () => {
+    save.vibrate = box.checked;
+    writeSave(save);
+    syncOptions();
+    haptic.buzz('medium');
   }),
 );
 sfxBoxes.forEach((box) =>
@@ -354,6 +417,7 @@ for (const type of ['pointerup', 'pointercancel', 'lostpointercapture'] as const
 addEventListener('touchstart', () => {
   if (!touchEnabled) {
     touchEnabled = true;
+    syncOptions();
     if (mode === 'playing') setPlayingUi(true);
   }
 }, { passive: true });
@@ -388,7 +452,40 @@ if (isNative) {
 
 // ------------------------------------------------------------ loop
 
+function drawModernMenuScene(): void {
+  const scroll = menuTime * 40;
+  drawModernBackground(ctx, 'pagi', scroll, 24, menuTime);
+  const gy = VIEW_H - 20;
+  const dirt = ctx.createLinearGradient(0, gy, 0, VIEW_H);
+  dirt.addColorStop(0, '#c48b5c');
+  dirt.addColorStop(1, '#98633d');
+  ctx.fillStyle = dirt;
+  ctx.fillRect(0, gy, VIEW_W, VIEW_H - gy);
+  const grass = ctx.createLinearGradient(0, gy - 1, 0, gy + 5);
+  grass.addColorStop(0, '#a8e57c');
+  grass.addColorStop(1, '#4c9a40');
+  ctx.fillStyle = grass;
+  ctx.beginPath();
+  ctx.moveTo(0, gy - 0.8);
+  ctx.lineTo(VIEW_W, gy - 0.8);
+  for (let x = VIEW_W; x >= 0; x -= 1.5) ctx.lineTo(x, gy + 4.4 + Math.sin((x + scroll) * 0.8) * 0.8);
+  ctx.fill();
+  const hop = Math.abs(Math.sin(menuTime * 6)) * 2;
+  drawKancil(ctx, 208, gy - hop, 1, 'run', menuTime, 0, hop < 0.3);
+  ctx.save();
+  ctx.translate(214, gy - 25 - hop);
+  ctx.scale(0.8, 0.8);
+  drawTimun(ctx);
+  ctx.restore();
+  drawAyam(ctx, 158 + Math.sin(menuTime * 0.7) * 14, gy, 1, menuTime, false, false);
+  drawAtmosphere(ctx, 'pagi', scroll, 24, menuTime);
+}
+
 function drawMenuScene(): void {
+  if (MODERN) {
+    drawModernMenuScene();
+    return;
+  }
   const scroll = menuTime * 40;
   drawBackground(ctx, 'pagi', scroll, 24, menuTime);
   const gy = VIEW_H - 20;

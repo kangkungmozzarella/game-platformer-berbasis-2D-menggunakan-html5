@@ -9,7 +9,8 @@ export type Sfx =
   | 'checkpoint'
   | 'win'
   | 'gameover'
-  | 'click';
+  | 'click'
+  | 'count';
 
 export interface Track {
   bpm: number;
@@ -23,6 +24,7 @@ export const TRACKS = {
   menu: { bpm: 76, base: 262, balungan: [2, 3, 2, 1, 3, 5, 3, 2, 5, 6, 5, 3, 2, 1, 2, 6] },
   sawah: { bpm: 120, base: 294, balungan: [3, 5, 6, 5, 3, 2, 1, 2, 3, 5, 3, 2, 6, 5, 3, 5, 6, 11, 6, 5, 3, 2, 3, 5, 6, 5, 3, 2, 1, 2, 3, 1] },
   kali: { bpm: 108, base: 277, balungan: [5, 6, 5, 3, 5, 6, 11, 6, 3, 2, 3, 5, 6, 5, 3, 2, 1, 2, 3, 2, 5, 3, 2, 1, 2, 3, 5, 6, 5, 3, 2, 1] },
+  buaya: { bpm: 112, base: 262, balungan: [2, 1, 2, 3, 5, 3, 2, 1, 6, 5, 6, 1, 2, 3, 2, 0, 3, 5, 6, 5, 3, 5, 3, 2, 1, 2, 3, 5, 2, 3, 2, 1] },
   candi: { bpm: 96, base: 247, balungan: [6, 5, 3, 2, 3, 5, 6, 0, 11, 6, 5, 6, 3, 5, 3, 2, 1, 2, 1, 6, 5, 6, 1, 2, 3, 2, 1, 6, 5, 3, 5, 6] },
 } satisfies Record<string, Track>;
 
@@ -230,6 +232,11 @@ export class SoundSystem {
       }
       case 'gameover':
         [5, 3, 2, 1].forEach((n, i) => this.tone(t + i * 0.22, 'triangle', slendro(220, n), slendro(220, n), 0.4, 0.22));
+        break;
+      case 'count':
+        // Hollow wooden "tok", like a kentongan.
+        this.tone(t, 'sine', 900, 620, 0.09, 0.3);
+        this.noise(t, 0.03, 0.15, 1400, this.sfxBus);
         break;
       case 'click':
         this.tone(t, 'square', 660, 660, 0.04, 0.08);

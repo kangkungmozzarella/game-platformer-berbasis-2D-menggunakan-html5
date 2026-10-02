@@ -206,3 +206,34 @@ export function toDataUrl(src: HTMLCanvasElement, scale: number): string {
   ctx.drawImage(src, 0, 0, c.width, c.height);
   return c.toDataURL();
 }
+
+const BUAYA: Palette = {
+  k: '#1c2914',
+  g: '#4f7a34',
+  G: '#7aa64a',
+  d: '#3a5a26',
+  w: '#efe8cc',
+  e: '#f2d14a',
+  p: '#1a1a1a',
+};
+
+const buaya = (eye: string) =>
+  pixelArt(
+    [
+      '.....................kkk........',
+      `...............k..k.k${eye}pk........`,
+      '..........k..kGkkGkkgggkkkkkkk..',
+      '......kkkkGkkgGggGgggggggggggggk',
+      '..kkkkggggGgggggggggggggggggggk.',
+      'kkggggggggggggggggggggggwkwkwkk.',
+      '.kkdddddddddddddddddddgggggggk..',
+      '...kkddddddddddddddddddddddk....',
+      '.....kkkkkkkkkkkkkkkkkkkkkk.....',
+    ],
+    BUAYA,
+    32,
+    9,
+  );
+
+/** Faces right; the second frame is a blink. */
+export const BUAYA_SPR = [buaya('e'), buaya('k')];

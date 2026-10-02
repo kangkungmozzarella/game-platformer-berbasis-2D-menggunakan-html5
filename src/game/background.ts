@@ -1,7 +1,7 @@
 import { makeCanvas, seeded } from '../engine/pixel';
-import { VIEW_H, VIEW_W } from './constants';
+import { MAX_VIEW_W, VIEW_H, VIEW_W } from './constants';
 
-export type ThemeName = 'pagi' | 'siang' | 'senja';
+export type ThemeName = 'pagi' | 'siang' | 'sore' | 'senja';
 
 interface Theme {
   skyTop: string;
@@ -38,6 +38,12 @@ const THEMES: Record<ThemeName, Theme> = {
     hills: '#5c9a4a', hillsDark: '#3f7238', field: '#7ab648', fieldLine: '#a8dc6e',
     house: '#6e4b30', roof: '#3f281c', cloud: '#ffffff', cloudShade: '#d4e6f4', fireflies: false,
   },
+  sore: {
+    skyTop: '#4f86c9', skyBottom: '#ffd29a', sun: '#fff0b8', sunGlow: '#ffc978', sunX: 96, sunY: 96, sunR: 16,
+    mountain: '#7c8fb4', mountainShade: '#68799e', smoke: '#f4e2d0',
+    hills: '#5f8c4a', hillsDark: '#3f6236', field: '#88a948', fieldLine: '#c2c56a',
+    house: '#5e3f2a', roof: '#3b241a', cloud: '#fff4e0', cloudShade: '#f0c9a0', fireflies: false,
+  },
   senja: {
     skyTop: '#33275a', skyBottom: '#f39253', sun: '#ffd27a', sunGlow: '#ffb466', sunX: 250, sunY: 140, sunR: 22,
     mountain: '#5c4170', mountainShade: '#4a3360', smoke: '#c99aa0',
@@ -67,12 +73,13 @@ function mix(a: string, b: string, t: number): string {
 }
 
 function buildSky(th: Theme): HTMLCanvasElement {
-  const [c, ctx] = makeCanvas(VIEW_W, VIEW_H);
+  // Built at the widest view so it covers any screen shape.
+  const [c, ctx] = makeCanvas(MAX_VIEW_W, VIEW_H);
   // Stepped bands instead of a smooth gradient for a retro look.
   const band = 6;
   for (let y = 0; y < VIEW_H; y += band) {
     ctx.fillStyle = mix(th.skyTop, th.skyBottom, Math.min(1, y / (VIEW_H * 0.8)));
-    ctx.fillRect(0, y, VIEW_W, band);
+    ctx.fillRect(0, y, MAX_VIEW_W, band);
   }
   const disc = (r: number, color: string) => {
     ctx.fillStyle = color;

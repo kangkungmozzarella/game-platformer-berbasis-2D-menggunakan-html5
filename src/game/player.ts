@@ -1,6 +1,8 @@
 import type { Input } from '../engine/input';
+import { MODERN } from './art';
 import type { Level } from './level';
 import { approach, moveBody, type Body } from './physics';
+import { drawKancil } from './modern/characters';
 import { HERO } from './sprites';
 
 // Tuned in px and seconds; one tile is 16 px.
@@ -109,6 +111,15 @@ export class Player implements Body {
     return ev;
   }
 
+  /** Stands the kancil on a moving platform (a buaya's back) whose top is at `top`. */
+  land(top: number, firstContact: boolean): void {
+    this.y = top - this.h;
+    this.vy = 0;
+    this.onGround = true;
+    this.jumpCuttable = false;
+    if (firstContact) this.squash = 0.2;
+  }
+
   /** Called after landing on an enemy; holding jump bounces higher. */
   bounce(jumpHeld: boolean): void {
     this.vy = -(jumpHeld ? STOMP_BOUNCE_HELD : STOMP_BOUNCE);
@@ -125,6 +136,11 @@ export class Player implements Body {
 
   draw(ctx: CanvasRenderingContext2D, camX: number, camY: number): void {
     if (!this.dead && this.invulnerable > 0 && Math.floor(this.invulnerable * 16) % 2) return;
+    if (MODERN) {
+      const pose = this.dead ? 'dead' : !this.onGround ? (this.vy < 0 ? 'jump' : 'fall') : Math.abs(this.vx) > 8 ? 'run' : 'idle';
+      drawKancil(ctx, this.x + this.w / 2 - camX, this.y + this.h - camY, this.facing, pose, this.animTime, this.squash, this.onGround);
+      return;
+    }
     let img: HTMLCanvasElement;
     if (this.dead) img = HERO.hurt;
     else if (!this.onGround) img = this.vy < 0 ? HERO.jump : HERO.fall;

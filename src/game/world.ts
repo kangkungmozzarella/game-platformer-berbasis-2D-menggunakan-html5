@@ -1,9 +1,15 @@
 import type { SoundSystem } from '../engine/audio';
+import type { Haptic } from '../engine/haptics';
 import type { Input } from '../engine/input';
+import { MODERN, snap } from './art';
 import { drawBackground } from './background';
+import { Buaya } from './buaya';
 import { MAX_LIVES, SCORE, TILE, VIEW_H, VIEW_W } from './constants';
 import { Ayam, Lebah, type Enemy } from './enemies';
 import { Level } from './level';
+import { drawAtmosphere, drawBackground as drawModernBackground } from './modern/background';
+import { drawItem, drawGapura, drawUmbul } from './modern/items';
+import { drawTerrain, drawWater as drawModernWater, renderTerrain, type Terrain } from './modern/terrain';
 import type { LevelDef } from './levels';
 import { Particles } from './particles';
 import { overlaps, approach, type Box } from './physics';
@@ -20,6 +26,8 @@ export interface LevelStats {
   timunTotal: number;
   rambutan: number;
   stomps: number;
+  /** Distinct crocodiles stepped on, counted aloud like in the folk tale. */
+  buaya: number;
   levelScore: number;
 }
 
@@ -46,6 +54,8 @@ export class World {
   readonly stats: LevelStats;
   private player = new Player();
   private enemies: Enemy[] = [];
+  private buayas: Buaya[] = [];
+  private riding: Buaya | null = null;
   private items: Item[] = [];
   private checkpoints: Checkpoint[] = [];
   private goal: Box & { cx: number };
@@ -59,14 +69,17 @@ export class World {
   private deathTimer = 0;
   private clearTimer = 0;
   private fade = 1;
+  private terrain: Terrain | null;
 
   constructor(
     readonly def: LevelDef,
     private session: Session,
     private sound: SoundSystem,
+    private haptic: Haptic,
     private emit: (e: WorldEvent) => void,
   ) {
     this.level = new Level(def);
+    this.terrain = MODERN ? renderTerrain(this.level, def.theme) : null;
     this.goal = { x: 0, y: 0, w: 48, h: 48, cx: 0 };
     for (const s of this.level.spawns) {
       const px = s.cx * TILE;
@@ -86,6 +99,10 @@ export class World {
         case 'lebah':
           this.enemies.push(new Lebah(s.cx, s.cy));
           break;
+        case 'buaya':
+        case 'buaya-swim':
+          this.buayas.push(new Buaya(s.cx, s.cy, s.kind === 'buaya-swim'));
+          break;
         case 'checkpoint':
           this.checkpoints.push({ x: px + 2, y: py + TILE - 32, w: 12, h: 32, active: false, spawnX: px + 2, spawnY: py + TILE - this.player.h });
           break;
@@ -99,6 +116,7 @@ export class World {
       timunTotal: this.items.filter((i) => i.kind === 'timun').length,
       rambutan: 0,
       stomps: 0,
+      buaya: 0,
       levelScore: 0,
     };
     this.player.spawn(this.respawn.x, this.respawn.y);
@@ -114,11 +132,22 @@ export class World {
     this.shake = Math.max(0, this.shake - dt);
     const p = this.player;
 
+    for (const b of this.buayas) {
+      b.update(dt, this.riding === b);
+      if (b.diving) {
+        this.particles.burst(b.x + b.w / 2, b.y + 4, { count: 12, colors: ['#a8dcff', '#ffffff'], speed: 40, life: 0.8, gravity: -60, upward: true });
+      }
+    }
+    // A swimming buaya carries whoever stands on it.
+    if (this.riding && !p.dead) p.x += this.riding.dx;
+
     const ev = p.update(dt, input, this.level);
     if (ev.jumped) {
       this.sound.play('jump');
+      this.haptic.buzz('light');
       this.dust(p.x + p.w / 2, p.y + p.h, 4);
     }
+    this.rideBuaya();
     if (ev.landed > 250) this.dust(p.x + p.w / 2, p.y + p.h, 6);
 
     for (const e of this.enemies) e.update(dt, this.level);
@@ -147,6 +176,32 @@ export class World {
       this.checkGoal();
     }
     this.updateCamera(dt);
+  }
+
+  private rideBuaya(): void {
+    const p = this.player;
+    const prev = this.riding;
+    this.riding = null;
+    if (p.dead || p.vy < 0) return;
+    for (const b of this.buayas) {
+      if (!b.solid || p.x + p.w <= b.x || p.x >= b.x + b.w) continue;
+      // Same one-way rule as bamboo rafts: only from above. The slack covers a sinking back.
+      if (p.prevBottom <= b.y + 4 && p.y + p.h >= b.y) {
+        p.land(b.y, prev !== b);
+        this.riding = b;
+        if (!b.counted) {
+          b.counted = true;
+          this.stats.buaya++;
+          this.session.score += 20;
+          this.stats.levelScore += 20;
+          this.particles.popup(String(this.stats.buaya), b.x + b.w / 2, b.y - 18, '#f2d14a');
+          this.sound.play('count');
+          this.haptic.buzz('light');
+          this.emit('hud');
+        }
+        return;
+      }
+    }
   }
 
   private checkHazards(): void {
@@ -191,6 +246,7 @@ export class World {
         this.stats.stomps++;
         this.addScore(SCORE.stomp, e.x + e.w / 2, e.y - 4);
         this.sound.play('stomp');
+        this.haptic.buzz('medium');
         this.particles.burst(e.x + e.w / 2, e.y + e.h / 2, {
           count: 10,
           colors: e instanceof Ayam ? ['#f2e2c0', '#c8642a', '#2f6d4a'] : ['#f5c431', '#1e1a14', '#eaf6ff'],
@@ -226,6 +282,7 @@ export class World {
         this.session.lives = Math.min(MAX_LIVES, this.session.lives + 1);
         this.particles.popup('+1', cx, cy - 8, '#ffb3a8');
         this.sound.play('ketupat');
+        this.haptic.buzz('light');
         this.emit('hud');
       }
       this.particles.burst(cx, cy, { count: 10, colors: ['#fff6c8', '#ffffff', '#f2c94c'], speed: 60, life: 0.45 });
@@ -238,6 +295,7 @@ export class World {
       cp.active = true;
       this.respawn = { x: cp.spawnX, y: cp.spawnY };
       this.sound.play('checkpoint');
+      this.haptic.buzz('light');
       this.particles.burst(cp.x + 6, cp.y + 4, { count: 16, colors: ['#e2453c', '#ffffff', '#f2c94c'], speed: 80, life: 0.8, gravity: 80 });
     }
   }
@@ -257,7 +315,9 @@ export class World {
     const p = this.player;
     if (p.dead) return;
     p.kill();
+    this.riding = null;
     if (!withHop) p.vy = 0;
+    this.haptic.buzz('heavy');
     this.deathTimer = 1.4;
     this.shake = 0.3;
     this.session.lives--;
@@ -320,23 +380,36 @@ export class World {
 
   draw(ctx: CanvasRenderingContext2D): void {
     const sh = this.shake > 0 ? 2 : 0;
-    const camX = Math.round(this.camX + (Math.random() - 0.5) * sh * 2);
-    const camY = Math.round(this.camY + (Math.random() - 0.5) * sh * 2);
+    const camX = snap(this.camX + (Math.random() - 0.5) * sh * 2);
+    const camY = snap(this.camY + (Math.random() - 0.5) * sh * 2);
 
-    drawBackground(ctx, this.def.theme, camX, camY, this.time);
-    ctx.drawImage(this.level.image, -camX, -camY);
-    this.drawGoal(ctx, camX, camY);
-    for (const cp of this.checkpoints) this.drawCheckpoint(ctx, cp, camX, camY);
-    for (const it of this.items) {
-      if (it.taken) continue;
-      const img = ITEM_SPRITES[it.kind];
-      const bob = Math.round(Math.sin(this.time * 3 + it.phase) * 1.5);
-      ctx.drawImage(img, Math.round(it.x + it.w / 2 - 8 - camX), Math.round(it.y + it.h / 2 - img.height / 2 - camY + bob));
+    if (this.terrain) {
+      drawModernBackground(ctx, this.def.theme, camX, camY, this.time);
+      drawTerrain(ctx, this.terrain, camX, camY, VIEW_W);
+      drawGapura(ctx, this.goal.cx - camX, this.goal.y + this.goal.h - camY, this.time);
+      for (const cp of this.checkpoints) drawUmbul(ctx, cp.x + 4 - camX, cp.y + cp.h - camY, cp.active, this.time);
+      for (const it of this.items) {
+        if (!it.taken) drawItem(ctx, it.kind, it.x + it.w / 2 - camX, it.y + it.h / 2 - camY, this.time, it.phase);
+      }
+    } else {
+      drawBackground(ctx, this.def.theme, camX, camY, this.time);
+      ctx.drawImage(this.level.image!, -camX, -camY);
+      this.drawGoal(ctx, camX, camY);
+      for (const cp of this.checkpoints) this.drawCheckpoint(ctx, cp, camX, camY);
+      for (const it of this.items) {
+        if (it.taken) continue;
+        const img = ITEM_SPRITES[it.kind];
+        const bob = Math.round(Math.sin(this.time * 3 + it.phase) * 1.5);
+        ctx.drawImage(img, Math.round(it.x + it.w / 2 - 8 - camX), Math.round(it.y + it.h / 2 - img.height / 2 - camY + bob));
+      }
     }
+    for (const b of this.buayas) b.draw(ctx, camX, camY);
     for (const e of this.enemies) e.draw(ctx, camX, camY);
     this.player.draw(ctx, camX, camY);
-    this.drawWater(ctx, camX, camY);
+    if (this.terrain) drawModernWater(ctx, this.terrain, camX, camY, VIEW_W, VIEW_H, this.time);
+    else this.drawWater(ctx, camX, camY);
     this.particles.draw(ctx, camX, camY);
+    if (MODERN) drawAtmosphere(ctx, this.def.theme, camX, camY, this.time);
 
     if (this.fade > 0) {
       ctx.globalAlpha = this.fade;

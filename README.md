@@ -1,9 +1,12 @@
 # Si Kancil — Petualangan di Kampung
 
 Game platformer 2D berbasis HTML5 Canvas, remake dari game "Frog Adventure" (kode lama tersimpan di [`legacy/`](legacy/)).
-Si Kancil berlari dari sawah Pak Tani, menyeberangi sungai, sampai ke candi di atas bukit.
+Si Kancil berlari dari sawah Pak Tani, menyeberangi sungai lewat punggung buaya, sampai ke candi di atas bukit.
 
-Semua grafis (pixel art) dan suara (musik gamelan bertangga nada slendro) dibuat lewat kode, tanpa file gambar atau audio.
+Semua grafis dan suara (musik gamelan bertangga nada slendro) dibuat lewat kode, tanpa file gambar atau audio. Ada dua gaya grafis yang bisa dipilih di **Pengaturan → Gaya grafis**:
+
+- **Modern** (bawaan): ilustrasi vektor halus bergaya "cozy", dirender sesuai resolusi layar.
+- **Pixel**: pixel art klasik 384×216.
 
 ## Menjalankan
 
@@ -48,6 +51,7 @@ src/
     loop.ts          game loop fixed-step 60 Hz
     input.ts         keyboard + tombol sentuh
     audio.ts         efek suara & musik gamelan (Web Audio)
+    haptics.ts       getaran di HP
     pixel.ts         util pixel art, PRNG, font angka 3x5
   game/
     levels.ts        data level (peta ASCII)
@@ -55,7 +59,10 @@ src/
     world.ts         gameplay: item, musuh, checkpoint, finis, kamera
     player.ts        gerakan Si Kancil (coyote time, jump buffer, dll.)
     enemies.ts       ayam jago & lebah
-    background.ts    latar parallax per tema (pagi/siang/senja)
+    buaya.ts         buaya: pijakan di sungai yang bisa menyelam
+    background.ts    latar parallax pixel art per tema
+    art.ts           pilihan gaya grafis (modern / pixel)
+    modern/          gambar versi modern: karakter, item, tile, latar
     sprites.ts       pixel art karakter & item
 ```
 
@@ -73,5 +80,6 @@ Level ditulis sebagai peta ASCII di [`src/game/levels.ts`](src/game/levels.ts). 
 | `f` | pagar bambu (dekorasi) | `l` | lebah |
 | `y` | rumpun padi (dekorasi) | `c` | umbul-umbul (checkpoint) |
 | `.` | kosong | `G` | gapura (finis) |
+| `b` | buaya diam (pijakan, menyelam kalau diinjak terlalu lama) | `v` | buaya berenang |
 
 Patokan jarak lompat: naik maksimal 3 tile, celah datar maksimal 3 tile.

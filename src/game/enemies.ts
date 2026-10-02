@@ -1,6 +1,8 @@
+import { MODERN } from './art';
 import { TILE } from './constants';
 import type { Level } from './level';
 import { moveBody, type Body } from './physics';
+import { drawAyam, drawLebah } from './modern/characters';
 import { AYAM_SPR, LEBAH_SPR } from './sprites';
 
 export interface Enemy extends Body {
@@ -61,6 +63,10 @@ export class Ayam implements Enemy {
   }
 
   draw(ctx: CanvasRenderingContext2D, camX: number, camY: number): void {
+    if (MODERN) {
+      drawAyam(ctx, this.x + this.w / 2 - camX, this.y + this.h - camY, this.dir, this.time, this.peck > 0, this.stomped > 0);
+      return;
+    }
     const img = this.peck > 0 ? AYAM_SPR.peck : AYAM_SPR.walk[Math.floor(this.time * 6) % 2];
     const cx = Math.round(this.x + this.w / 2 - camX);
     const bottom = Math.round(this.y + this.h - camY) + 1;
@@ -110,6 +116,10 @@ export class Lebah implements Enemy {
   }
 
   draw(ctx: CanvasRenderingContext2D, camX: number, camY: number): void {
+    if (MODERN) {
+      drawLebah(ctx, this.x + this.w / 2 - camX, this.y + this.h / 2 - camY, this.vx >= 0 ? 1 : -1, this.time, this.stomped > 0);
+      return;
+    }
     const img = LEBAH_SPR[Math.floor(this.time * 18) % 2];
     const cx = Math.round(this.x + this.w / 2 - camX);
     const cy = Math.round(this.y + this.h / 2 - camY);

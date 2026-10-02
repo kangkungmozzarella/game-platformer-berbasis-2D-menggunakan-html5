@@ -1,9 +1,10 @@
 import { makeCanvas, seeded } from '../engine/pixel';
+import { MODERN } from './art';
 import { TILE } from './constants';
 import type { LevelDef } from './levels';
 
 export interface Spawn {
-  kind: 'player' | 'timun' | 'rambutan' | 'ketupat' | 'ayam' | 'lebah' | 'checkpoint' | 'goal';
+  kind: 'player' | 'timun' | 'rambutan' | 'ketupat' | 'ayam' | 'lebah' | 'buaya' | 'buaya-swim' | 'checkpoint' | 'goal';
   cx: number;
   cy: number;
 }
@@ -15,6 +16,8 @@ const SPAWN_CHARS: Record<string, Spawn['kind']> = {
   k: 'ketupat',
   a: 'ayam',
   l: 'lebah',
+  b: 'buaya',
+  v: 'buaya-swim',
   c: 'checkpoint',
   G: 'goal',
 };
@@ -26,7 +29,8 @@ export class Level {
   readonly width: number;
   readonly height: number;
   readonly spawns: Spawn[] = [];
-  readonly image: HTMLCanvasElement;
+  /** Pre-rendered pixel-art terrain; the modern style renders its own (see modern/terrain.ts). */
+  readonly image: HTMLCanvasElement | null;
   private grid: string[][];
 
   constructor(def: LevelDef) {
@@ -45,7 +49,7 @@ export class Level {
         return ch;
       }),
     );
-    this.image = renderTerrain(this);
+    this.image = MODERN ? null : renderTerrain(this);
   }
 
   tile(cx: number, cy: number): string {

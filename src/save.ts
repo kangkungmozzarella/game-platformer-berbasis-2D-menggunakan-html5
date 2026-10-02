@@ -5,11 +5,14 @@ export interface SaveData {
   allTimun: boolean[];
   music: boolean;
   sfx: boolean;
+  vibrate: boolean;
+  /** Visual style; switching reloads the page. */
+  art: 'modern' | 'pixel';
 }
 
 const KEY = 'si-kancil-save-v1';
 
-const DEFAULTS: SaveData = { unlocked: 1, best: [], allTimun: [], music: true, sfx: true };
+const DEFAULTS: SaveData = { unlocked: 1, best: [], allTimun: [], music: true, sfx: true, vibrate: true, art: 'modern' };
 
 export function loadSave(): SaveData {
   try {
