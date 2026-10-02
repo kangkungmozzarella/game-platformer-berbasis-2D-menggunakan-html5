@@ -1,22 +1,126 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-	<title>Frog Adventure</title>
-    <style>
-html,body { margin: 0;overflow: hidden;}
-canvas{ padding: 0; margin: auto; display: block; width:100%;}
-#gameArea {width:80%; position:absolute;}
-#game {margin:50px;}
-	</style>
- 	<script type="text/javascript" src="js/gameLib.js"></script>       
-</head>
-<body>
-<div id="game">
-	<div id="gameArea"><canvas id="canvas"></canvas></div>
-</div>
-</body>
-<script type="text/javascript" src="js/map_1.js"></script>
-<script type="text/javascript" src="js/map_2.js"></script>
-<script type="text/javascript" src="js/game.js"></script>
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#1b1210" />
+    <title>Si Kancil — Petualangan di Kampung</title>
+  </head>
+  <body>
+    <div id="stage">
+      <canvas id="game" width="384" height="216"></canvas>
+
+      <!-- In-game HUD -->
+      <div id="hud" class="hidden">
+        <div class="hud-left">
+          <div id="hud-hearts" class="hearts" aria-label="Nyawa"></div>
+          <div class="hud-chip"><img id="hud-timun-icon" alt="" /><span id="hud-timun">0/0</span></div>
+        </div>
+        <div class="hud-center" id="hud-level"></div>
+        <div class="hud-right">
+          <div class="hud-chip score"><span>Skor</span> <strong id="hud-score">0</strong></div>
+          <button id="btn-pause" class="icon-btn" aria-label="Jeda">❚❚</button>
+        </div>
+      </div>
+
+      <div id="banner" class="hidden"><small id="banner-level"></small><strong id="banner-name"></strong><span id="banner-sub"></span></div>
+
+      <!-- Touch controls -->
+      <div id="touch" class="hidden">
+        <div id="pad" aria-hidden="true"><span>◀</span><span>▶</span></div>
+        <div id="btn-jump" aria-hidden="true">▲</div>
+      </div>
+
+      <!-- Menus -->
+      <section id="screen-title" class="screen">
+        <div class="title-block">
+          <p class="eyebrow">Petualangan di Kampung</p>
+          <h1>Si Kancil</h1>
+        </div>
+        <div class="menu">
+          <button data-action="play" id="btn-play">Mulai</button>
+          <button data-action="levels">Pilih Level</button>
+          <button data-action="help">Cara Main</button>
+          <button data-action="settings">Pengaturan</button>
+        </div>
+      </section>
+
+      <section id="screen-levels" class="screen hidden panel-screen">
+        <div class="panel">
+          <h2>Pilih Level</h2>
+          <div id="level-list" class="level-list"></div>
+          <button data-action="back" class="ghost">Kembali</button>
+        </div>
+      </section>
+
+      <section id="screen-help" class="screen hidden panel-screen">
+        <div class="panel">
+          <h2>Cara Main</h2>
+          <p>Bantu Si Kancil menyeberangi kampung sampai ke <b>gapura</b> di ujung tiap level.</p>
+          <ul class="help-list">
+            <li><kbd>←</kbd><kbd>→</kbd> atau <kbd>A</kbd><kbd>D</kbd> untuk berjalan</li>
+            <li><kbd>Spasi</kbd>, <kbd>↑</kbd> atau <kbd>W</kbd> untuk melompat. Tahan supaya lebih tinggi</li>
+            <li><kbd>Esc</kbd> atau <kbd>P</kbd> untuk jeda</li>
+            <li>Injak <b>ayam jago</b> dan <b>lebah</b> dari atas. Jangan tersentuh dari samping!</li>
+            <li>Kumpulkan semua <b>timun</b> untuk bonus 500. <b>Ketupat</b> menambah nyawa.</li>
+            <li>Hindari <b>bambu runcing</b> dan jangan tercebur ke <b>sungai</b>.</li>
+            <li>Sentuh <b>umbul-umbul</b> untuk menyimpan posisi.</li>
+          </ul>
+          <button data-action="back" class="ghost">Kembali</button>
+        </div>
+      </section>
+
+      <section id="screen-settings" class="screen hidden panel-screen">
+        <div class="panel">
+          <h2>Pengaturan</h2>
+          <label class="toggle"><input type="checkbox" id="opt-music" /> <span>Musik gamelan</span></label>
+          <label class="toggle"><input type="checkbox" id="opt-sfx" /> <span>Efek suara</span></label>
+          <button data-action="reset-progress" class="ghost danger">Hapus progres</button>
+          <button data-action="back" class="ghost">Kembali</button>
+        </div>
+      </section>
+
+      <section id="screen-pause" class="screen hidden panel-screen dim">
+        <div class="panel">
+          <h2>Jeda</h2>
+          <button data-action="resume">Lanjut</button>
+          <button data-action="restart">Ulangi Level</button>
+          <label class="toggle"><input type="checkbox" id="opt-music-pause" /> <span>Musik</span></label>
+          <label class="toggle"><input type="checkbox" id="opt-sfx-pause" /> <span>Efek suara</span></label>
+          <button data-action="quit" class="ghost">Keluar ke Menu</button>
+        </div>
+      </section>
+
+      <section id="screen-complete" class="screen hidden panel-screen dim">
+        <div class="panel">
+          <h2>Berhasil!</h2>
+          <dl id="complete-stats" class="stats"></dl>
+          <p id="complete-record" class="record hidden">Rekor baru!</p>
+          <button data-action="next" id="btn-next">Lanjut</button>
+          <button data-action="quit" class="ghost">Menu</button>
+        </div>
+      </section>
+
+      <section id="screen-gameover" class="screen hidden panel-screen dim">
+        <div class="panel">
+          <h2>Kancil Kelelahan…</h2>
+          <p>Nyawamu habis. Istirahat sebentar, lalu coba lagi!</p>
+          <button data-action="retry">Coba Lagi</button>
+          <button data-action="quit" class="ghost">Menu</button>
+        </div>
+      </section>
+
+      <section id="screen-ending" class="screen hidden panel-screen dim">
+        <div class="panel">
+          <h2>Tamat!</h2>
+          <p>Si Kancil pulang ke hutan dengan perut kenyang timun. Pak Tani cuma bisa geleng-geleng kepala.</p>
+          <dl id="ending-stats" class="stats"></dl>
+          <button data-action="quit">Kembali ke Menu</button>
+        </div>
+      </section>
+
+      <div id="rotate-hint" class="hidden">Putar HP-mu ke posisi mendatar untuk bermain lebih nyaman.</div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
 </html>
