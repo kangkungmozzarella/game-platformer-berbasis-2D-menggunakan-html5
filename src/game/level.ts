@@ -1,5 +1,4 @@
 import { makeCanvas, seeded } from '../engine/pixel';
-import { MODERN } from './art';
 import { TILE } from './constants';
 import type { LevelDef } from './levels';
 
@@ -29,8 +28,7 @@ export class Level {
   readonly width: number;
   readonly height: number;
   readonly spawns: Spawn[] = [];
-  /** Pre-rendered pixel-art terrain; the modern style renders its own (see modern/terrain.ts). */
-  readonly image: HTMLCanvasElement | null;
+  readonly image: HTMLCanvasElement;
   private grid: string[][];
 
   constructor(def: LevelDef) {
@@ -49,7 +47,7 @@ export class Level {
         return ch;
       }),
     );
-    this.image = MODERN ? null : renderTerrain(this);
+    this.image = renderTerrain(this);
   }
 
   tile(cx: number, cy: number): string {

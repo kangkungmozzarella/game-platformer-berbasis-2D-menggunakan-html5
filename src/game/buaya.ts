@@ -1,6 +1,4 @@
-import { MODERN } from './art';
 import { TILE } from './constants';
-import { drawBuaya } from './modern/characters';
 import type { Box } from './physics';
 import { BUAYA_SPR } from './sprites';
 
@@ -99,11 +97,6 @@ export class Buaya implements Box {
   draw(ctx: CanvasRenderingContext2D, camX: number, camY: number): void {
     if (this.state === 'under') return;
     const shake = this.state === 'warn' ? Math.round(Math.sin(this.time * 60)) : 0;
-    if (MODERN) {
-      const bob = this.state === 'float' ? Math.sin(this.time * 2) * 0.4 : 0;
-      drawBuaya(ctx, this.x + this.w / 2 + shake * 0.6 - camX, this.y + bob - camY, this.facing, this.time, this.state === 'warn' || this.state === 'sink');
-      return;
-    }
     const bob = this.state === 'float' ? Math.round(Math.sin(this.time * 2) * 0.6) : 0;
     const blink = this.time % 3.5 < 0.12 ? 1 : 0;
     const x = Math.round(this.x - 1 - camX) + shake;

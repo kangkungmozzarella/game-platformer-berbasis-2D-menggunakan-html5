@@ -1,15 +1,11 @@
 import type { SoundSystem } from '../engine/audio';
 import type { Haptic } from '../engine/haptics';
 import type { Input } from '../engine/input';
-import { MODERN, snap } from './art';
 import { drawBackground } from './background';
 import { Buaya } from './buaya';
 import { MAX_LIVES, SCORE, TILE, VIEW_H, VIEW_W } from './constants';
 import { Ayam, Lebah, type Enemy } from './enemies';
 import { Level } from './level';
-import { drawAtmosphere, drawBackground as drawModernBackground } from './modern/background';
-import { drawItem, drawGapura, drawUmbul } from './modern/items';
-import { drawTerrain, drawWater as drawModernWater, renderTerrain, type Terrain } from './modern/terrain';
 import type { LevelDef } from './levels';
 import { Particles } from './particles';
 import { overlaps, approach, type Box } from './physics';
@@ -69,7 +65,6 @@ export class World {
   private deathTimer = 0;
   private clearTimer = 0;
   private fade = 1;
-  private terrain: Terrain | null;
 
   constructor(
     readonly def: LevelDef,
@@ -79,7 +74,6 @@ export class World {
     private emit: (e: WorldEvent) => void,
   ) {
     this.level = new Level(def);
-    this.terrain = MODERN ? renderTerrain(this.level, def.theme) : null;
     this.goal = { x: 0, y: 0, w: 48, h: 48, cx: 0 };
     for (const s of this.level.spawns) {
       const px = s.cx * TILE;
@@ -380,36 +374,24 @@ export class World {
 
   draw(ctx: CanvasRenderingContext2D): void {
     const sh = this.shake > 0 ? 2 : 0;
-    const camX = snap(this.camX + (Math.random() - 0.5) * sh * 2);
-    const camY = snap(this.camY + (Math.random() - 0.5) * sh * 2);
+    const camX = Math.round(this.camX + (Math.random() - 0.5) * sh * 2);
+    const camY = Math.round(this.camY + (Math.random() - 0.5) * sh * 2);
 
-    if (this.terrain) {
-      drawModernBackground(ctx, this.def.theme, camX, camY, this.time);
-      drawTerrain(ctx, this.terrain, camX, camY, VIEW_W);
-      drawGapura(ctx, this.goal.cx - camX, this.goal.y + this.goal.h - camY, this.time);
-      for (const cp of this.checkpoints) drawUmbul(ctx, cp.x + 4 - camX, cp.y + cp.h - camY, cp.active, this.time);
-      for (const it of this.items) {
-        if (!it.taken) drawItem(ctx, it.kind, it.x + it.w / 2 - camX, it.y + it.h / 2 - camY, this.time, it.phase);
-      }
-    } else {
-      drawBackground(ctx, this.def.theme, camX, camY, this.time);
-      ctx.drawImage(this.level.image!, -camX, -camY);
-      this.drawGoal(ctx, camX, camY);
-      for (const cp of this.checkpoints) this.drawCheckpoint(ctx, cp, camX, camY);
-      for (const it of this.items) {
-        if (it.taken) continue;
-        const img = ITEM_SPRITES[it.kind];
-        const bob = Math.round(Math.sin(this.time * 3 + it.phase) * 1.5);
-        ctx.drawImage(img, Math.round(it.x + it.w / 2 - 8 - camX), Math.round(it.y + it.h / 2 - img.height / 2 - camY + bob));
-      }
+    drawBackground(ctx, this.def.theme, camX, camY, this.time);
+    ctx.drawImage(this.level.image, -camX, -camY);
+    this.drawGoal(ctx, camX, camY);
+    for (const cp of this.checkpoints) this.drawCheckpoint(ctx, cp, camX, camY);
+    for (const it of this.items) {
+      if (it.taken) continue;
+      const img = ITEM_SPRITES[it.kind];
+      const bob = Math.round(Math.sin(this.time * 3 + it.phase) * 1.5);
+      ctx.drawImage(img, Math.round(it.x + it.w / 2 - 8 - camX), Math.round(it.y + it.h / 2 - img.height / 2 - camY + bob));
     }
     for (const b of this.buayas) b.draw(ctx, camX, camY);
     for (const e of this.enemies) e.draw(ctx, camX, camY);
     this.player.draw(ctx, camX, camY);
-    if (this.terrain) drawModernWater(ctx, this.terrain, camX, camY, VIEW_W, VIEW_H, this.time);
-    else this.drawWater(ctx, camX, camY);
+    this.drawWater(ctx, camX, camY);
     this.particles.draw(ctx, camX, camY);
-    if (MODERN) drawAtmosphere(ctx, this.def.theme, camX, camY, this.time);
 
     if (this.fade > 0) {
       ctx.globalAlpha = this.fade;

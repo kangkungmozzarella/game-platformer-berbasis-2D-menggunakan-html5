@@ -6,13 +6,11 @@ export interface SaveData {
   music: boolean;
   sfx: boolean;
   vibrate: boolean;
-  /** Visual style; switching reloads the page. */
-  art: 'modern' | 'pixel';
 }
 
 const KEY = 'si-kancil-save-v1';
 
-const DEFAULTS: SaveData = { unlocked: 1, best: [], allTimun: [], music: true, sfx: true, vibrate: true, art: 'modern' };
+const DEFAULTS: SaveData = { unlocked: 1, best: [], allTimun: [], music: true, sfx: true, vibrate: true };
 
 export function loadSave(): SaveData {
   try {

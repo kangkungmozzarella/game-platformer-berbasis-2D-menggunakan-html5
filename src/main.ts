@@ -1,8 +1,5 @@
 import '@fontsource/pixelify-sans/400.css';
 import '@fontsource/pixelify-sans/700.css';
-import '@fontsource/fredoka/500.css';
-import '@fontsource/fredoka/600.css';
-import '@fontsource/fredoka/700.css';
 import './style.css';
 import { App } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
@@ -10,11 +7,7 @@ import { SoundSystem } from './engine/audio';
 import { Haptic } from './engine/haptics';
 import { Input, type Action } from './engine/input';
 import { startLoop } from './engine/loop';
-import { MODERN } from './game/art';
 import { drawBackground } from './game/background';
-import { drawAyam, drawKancil } from './game/modern/characters';
-import { drawAtmosphere, drawBackground as drawModernBackground } from './game/modern/background';
-import { drawHeart, drawTimun } from './game/modern/items';
 import { BASE_VIEW_W, MAX_VIEW_W, setViewWidth, START_LIVES, VIEW_H, VIEW_W } from './game/constants';
 import { LEVELS } from './game/levels';
 import { AYAM_SPR, HEART_EMPTY, HEART_FULL, HERO, TIMUN, toDataUrl } from './game/sprites';
@@ -28,25 +21,18 @@ const $ = <T extends HTMLElement = HTMLElement>(sel: string) => document.querySe
 
 const canvas = $<HTMLCanvasElement>('#game');
 const ctx = canvas.getContext('2d')!;
-document.body.classList.add(MODERN ? 'art-modern' : 'art-pixel');
 
-/**
- * Pixel art renders at the native 384x216 and is scaled up by CSS. The modern style renders
- * at (close to) screen resolution, keeping game logic in the same 384x216 coordinate space.
- */
+/** Renders at the native resolution and lets CSS scale it up with crisp pixels. */
 function fitCanvas(): void {
   // Show more of the level on wide phones instead of adding black bars at the sides.
   const aspect = innerWidth / innerHeight;
   setViewWidth(Math.round(Math.min(MAX_VIEW_W, Math.max(BASE_VIEW_W, VIEW_H * aspect))));
   document.documentElement.style.setProperty('--view-aspect', String(VIEW_W / VIEW_H));
-  const scale = MODERN ? Math.min(3, Math.max(1, Math.round((canvas.clientWidth * devicePixelRatio) / VIEW_W))) : 1;
-  if (canvas.width !== VIEW_W * scale || canvas.height !== VIEW_H * scale) {
-    canvas.width = VIEW_W * scale;
-    canvas.height = VIEW_H * scale;
+  if (canvas.width !== VIEW_W || canvas.height !== VIEW_H) {
+    canvas.width = VIEW_W;
+    canvas.height = VIEW_H;
   }
-  ctx.setTransform(scale, 0, 0, scale, 0, 0);
-  ctx.imageSmoothingEnabled = MODERN;
-  ctx.imageSmoothingQuality = 'high';
+  ctx.imageSmoothingEnabled = false;
 }
 fitCanvas();
 addEventListener('resize', fitCanvas);
@@ -67,20 +53,9 @@ let menuTime = 0;
 const isNative = Capacitor.isNativePlatform();
 let touchEnabled = isNative || matchMedia('(pointer: coarse)').matches;
 
-/** Renders a vector drawing (centred in a 16x16 box) to a crisp image for the DOM HUD. */
-function vectorIcon(draw: (c: CanvasRenderingContext2D) => void): string {
-  const c = document.createElement('canvas');
-  c.width = c.height = 64;
-  const g = c.getContext('2d')!;
-  g.scale(4, 4);
-  g.translate(8, 8);
-  draw(g);
-  return c.toDataURL();
-}
-
-const HEART_FULL_URL = MODERN ? vectorIcon((g) => drawHeart(g, 0, 0.5, 15, true)) : toDataUrl(HEART_FULL, 4);
-const HEART_EMPTY_URL = MODERN ? vectorIcon((g) => drawHeart(g, 0, 0.5, 15, false)) : toDataUrl(HEART_EMPTY, 4);
-const TIMUN_URL = MODERN ? vectorIcon((g) => { g.scale(1.05, 1.05); drawTimun(g); }) : toDataUrl(TIMUN, 4);
+const HEART_FULL_URL = toDataUrl(HEART_FULL, 4);
+const HEART_EMPTY_URL = toDataUrl(HEART_EMPTY, 4);
+const TIMUN_URL = toDataUrl(TIMUN, 4);
 
 // ------------------------------------------------------------ screens
 
@@ -108,7 +83,6 @@ function setPlayingUi(on: boolean): void {
 
 function refreshTitle(): void {
   $('#btn-play').textContent = save.unlocked > 1 ? 'Lanjutkan' : 'Mulai';
-  $('#btn-art').textContent = `Gaya grafis: ${MODERN ? 'Modern' : 'Pixel'}`;
 }
 
 function buildLevelList(): void {
@@ -262,11 +236,6 @@ function handleAction(action: string): void {
       break;
     case 'back':
       show('title');
-      break;
-    case 'toggle-art':
-      save.art = MODERN ? 'pixel' : 'modern';
-      writeSave(save);
-      location.reload();
       break;
     case 'reset-progress':
       if (confirm('Hapus semua progres dan rekor?')) {
@@ -452,40 +421,7 @@ if (isNative) {
 
 // ------------------------------------------------------------ loop
 
-function drawModernMenuScene(): void {
-  const scroll = menuTime * 40;
-  drawModernBackground(ctx, 'pagi', scroll, 24, menuTime);
-  const gy = VIEW_H - 20;
-  const dirt = ctx.createLinearGradient(0, gy, 0, VIEW_H);
-  dirt.addColorStop(0, '#c48b5c');
-  dirt.addColorStop(1, '#98633d');
-  ctx.fillStyle = dirt;
-  ctx.fillRect(0, gy, VIEW_W, VIEW_H - gy);
-  const grass = ctx.createLinearGradient(0, gy - 1, 0, gy + 5);
-  grass.addColorStop(0, '#a8e57c');
-  grass.addColorStop(1, '#4c9a40');
-  ctx.fillStyle = grass;
-  ctx.beginPath();
-  ctx.moveTo(0, gy - 0.8);
-  ctx.lineTo(VIEW_W, gy - 0.8);
-  for (let x = VIEW_W; x >= 0; x -= 1.5) ctx.lineTo(x, gy + 4.4 + Math.sin((x + scroll) * 0.8) * 0.8);
-  ctx.fill();
-  const hop = Math.abs(Math.sin(menuTime * 6)) * 2;
-  drawKancil(ctx, 208, gy - hop, 1, 'run', menuTime, 0, hop < 0.3);
-  ctx.save();
-  ctx.translate(214, gy - 25 - hop);
-  ctx.scale(0.8, 0.8);
-  drawTimun(ctx);
-  ctx.restore();
-  drawAyam(ctx, 158 + Math.sin(menuTime * 0.7) * 14, gy, 1, menuTime, false, false);
-  drawAtmosphere(ctx, 'pagi', scroll, 24, menuTime);
-}
-
 function drawMenuScene(): void {
-  if (MODERN) {
-    drawModernMenuScene();
-    return;
-  }
   const scroll = menuTime * 40;
   drawBackground(ctx, 'pagi', scroll, 24, menuTime);
   const gy = VIEW_H - 20;

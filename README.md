@@ -3,10 +3,7 @@
 Game platformer 2D berbasis HTML5 Canvas, remake dari game "Frog Adventure" (kode lama tersimpan di [`legacy/`](legacy/)).
 Si Kancil berlari dari sawah Pak Tani, menyeberangi sungai lewat punggung buaya, sampai ke candi di atas bukit.
 
-Semua grafis dan suara (musik gamelan bertangga nada slendro) dibuat lewat kode, tanpa file gambar atau audio. Ada dua gaya grafis yang bisa dipilih di **Pengaturan → Gaya grafis**:
-
-- **Modern** (bawaan): ilustrasi vektor halus bergaya "cozy", dirender sesuai resolusi layar.
-- **Pixel**: pixel art klasik 384×216.
+Semua grafis (pixel art) dan suara (musik gamelan bertangga nada slendro) dibuat lewat kode, tanpa file gambar atau audio.
 
 ## Menjalankan
 
@@ -60,9 +57,7 @@ src/
     player.ts        gerakan Si Kancil (coyote time, jump buffer, dll.)
     enemies.ts       ayam jago & lebah
     buaya.ts         buaya: pijakan di sungai yang bisa menyelam
-    background.ts    latar parallax pixel art per tema
-    art.ts           pilihan gaya grafis (modern / pixel)
-    modern/          gambar versi modern: karakter, item, tile, latar
+    background.ts    latar parallax per tema (pagi/siang/sore/senja)
     sprites.ts       pixel art karakter & item
 ```
 

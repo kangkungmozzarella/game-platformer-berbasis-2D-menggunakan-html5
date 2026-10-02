@@ -71,7 +71,6 @@
           <label class="toggle"><input type="checkbox" id="opt-music" /> <span>Musik gamelan</span></label>
           <label class="toggle"><input type="checkbox" id="opt-sfx" /> <span>Efek suara</span></label>
           <label class="toggle touch-only"><input type="checkbox" id="opt-vibrate" /> <span>Getar</span></label>
-          <button data-action="toggle-art" id="btn-art" class="ghost">Gaya grafis: Modern</button>
           <button data-action="reset-progress" class="ghost danger">Hapus progres</button>
           <button data-action="back" class="ghost">Kembali</button>
         </div>
@@ -123,10 +122,10 @@
     <!-- Touch controls sit outside the stage so they hug the screen corners, not the 16:9 game area. -->
     <div id="touch" class="hidden" aria-hidden="true">
       <div id="pad">
-        <span class="tbtn"><svg viewBox="0 0 4 7" class="icon-pixel"><path transform="matrix(-1 0 0 1 4 0)" d="M0 0h1v7H0zM1 1h1v5H1zM2 2h1v3H2zM3 3h1v1H3z" /></svg><svg viewBox="0 0 24 24" class="icon-modern"><path d="M15 5l-7 7 7 7" /></svg></span>
-        <span class="tbtn"><svg viewBox="0 0 4 7" class="icon-pixel"><path d="M0 0h1v7H0zM1 1h1v5H1zM2 2h1v3H2zM3 3h1v1H3z" /></svg><svg viewBox="0 0 24 24" class="icon-modern"><path d="M9 5l7 7-7 7" /></svg></span>
+        <span class="tbtn"><svg viewBox="0 0 4 7"><path transform="matrix(-1 0 0 1 4 0)" d="M0 0h1v7H0zM1 1h1v5H1zM2 2h1v3H2zM3 3h1v1H3z" /></svg></span>
+        <span class="tbtn"><svg viewBox="0 0 4 7"><path d="M0 0h1v7H0zM1 1h1v5H1zM2 2h1v3H2zM3 3h1v1H3z" /></svg></span>
       </div>
-      <div id="btn-jump" class="tbtn tbtn-big"><svg viewBox="0 0 7 4" class="icon-pixel"><path d="M3 0h1v1H3zM2 1h3v1H2zM1 2h5v1H1zM0 3h7v1H0z" /></svg><svg viewBox="0 0 24 24" class="icon-modern"><path d="M5 15l7-7 7 7" /></svg></div>
+      <div id="btn-jump" class="tbtn tbtn-big"><svg viewBox="0 0 7 4"><path d="M3 0h1v1H3zM2 1h3v1H2zM1 2h5v1H1zM0 3h7v1H0z" /></svg></div>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
